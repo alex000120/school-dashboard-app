@@ -11,20 +11,13 @@
   </head>
   <body>
     <div class="app-shell">
-      <header class="topbar">
-        <div class="brand-stack">
-          <p class="eyebrow">Proyecto escolar</p>
-          <h1>Gesture Video Player Pro</h1>
-        </div>
+      <main class="studio">
+        <section class="player-panel">
+          <div class="panel-topbar">
+            <div class="project-badge">Gesture Control</div>
+            <button id="cameraToggle" class="ghost-btn">Cámara</button>
+          </div>
 
-        <div class="topbar-actions">
-          <button id="cameraToggle" class="secondary-btn">Activar cámara</button>
-          <button id="fullscreenBtn" class="secondary-btn">Pantalla completa</button>
-        </div>
-      </header>
-
-      <main class="layout">
-        <section class="stage-panel">
           <div id="playerStage" class="player-stage">
             <video id="videoPlayer" playsinline controls preload="metadata"></video>
             <video id="cameraVideo" autoplay playsinline muted></video>
@@ -37,65 +30,45 @@
             </div>
           </div>
 
-          <div class="media-controls">
-            <button class="action-btn" data-action="prev">Anterior</button>
-            <button class="action-btn" data-action="playPause">Play / Pausa</button>
-            <button class="action-btn" data-action="next">Siguiente</button>
-            <button class="action-btn" data-action="mute">Silenciar</button>
-          </div>
-
-          <div class="timeline-panel">
-            <div class="time-row">
-              <span id="currentTime">0:00</span>
-              <input id="progressBar" type="range" min="0" max="100" value="0" aria-label="Progreso del video" />
-              <span id="totalTime">0:00</span>
+          <div class="bottom-strip">
+            <div class="camera-preview-box">
+              <div class="mini-header">
+                <span>Mini cámara</span>
+                <span id="detectionState" class="detection-dot offline"></span>
+              </div>
+              <video id="cameraPreview" autoplay playsinline muted></video>
+              <div id="gestureDetectionStatus" class="detection-status">Esperando cámara...</div>
             </div>
 
-            <div class="volume-row">
-              <label for="volumeBar">Volumen</label>
-              <input id="volumeBar" type="range" min="0" max="1" step="0.01" value="0.8" aria-label="Control de volumen" />
+            <div class="controls-panel">
+              <div class="compact-actions">
+                <button class="action-btn" data-action="prev">Anterior</button>
+                <button class="action-btn" data-action="playPause">Play / Pausa</button>
+                <button class="action-btn" data-action="next">Siguiente</button>
+                <button class="action-btn" data-action="mute">Silenciar</button>
+              </div>
+
+              <div class="timeline-panel">
+                <div class="time-row">
+                  <span id="currentTime">0:00</span>
+                  <input id="progressBar" type="range" min="0" max="100" value="0" aria-label="Progreso del video" />
+                  <span id="totalTime">0:00</span>
+                </div>
+
+                <div class="volume-row">
+                  <label for="volumeBar">Volumen</label>
+                  <input id="volumeBar" type="range" min="0" max="1" step="0.01" value="0.8" aria-label="Control de volumen" />
+                </div>
+              </div>
             </div>
           </div>
         </section>
 
-        <aside class="sidebar">
-          <div class="camera-preview-panel">
-            <div class="mini-panel-header">
-              <h3>Mini cámara</h3>
-              <span id="detectionState" class="detection-dot offline"></span>
-            </div>
-            <video id="cameraPreview" autoplay playsinline muted></video>
-            <div id="gestureDetectionStatus" class="detection-status">Esperando cámara...</div>
+        <aside class="library-panel">
+          <div class="panel-header-inline">
+            <h3>Biblioteca</h3>
           </div>
-
-          <div class="playlist-block">
-            <h2>Lista de reproducción</h2>
-            <div id="playlist" class="playlist"></div>
-          </div>
-
-          <div class="legend-block">
-            <h3>Controles por gestos</h3>
-            <ul>
-              <li><span class="gesture-name">Palma abierta</span><span>Reproducir / pausar</span></li>
-              <li><span class="gesture-name">Puño</span><span>Video siguiente</span></li>
-              <li><span class="gesture-name">Señal V</span><span>Video anterior</span></li>
-              <li><span class="gesture-name">Deslizar izq / der</span><span>Buscar ±10s</span></li>
-              <li><span class="gesture-name">Mano arriba</span><span>Subir volumen</span></li>
-              <li><span class="gesture-name">Mano abajo</span><span>Bajar volumen</span></li>
-              <li><span class="gesture-name">Pinza</span><span>Clic del mouse</span></li>
-              <li><span class="gesture-name">Dedo índice</span><span>Cursor virtual</span></li>
-            </ul>
-          </div>
-
-          <div class="tips-block">
-            <h3>Recomendaciones</h3>
-            <ul>
-              <li>Usa buena iluminación.</li>
-              <li>Muestra la mano en frente de la cámara.</li>
-              <li>Activa la cámara desde el botón superior.</li>
-              <li>El cursor virtual funciona con el dedo índice.</li>
-            </ul>
-          </div>
+          <div id="playlist" class="playlist"></div>
         </aside>
       </main>
     </div>
