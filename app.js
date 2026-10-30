@@ -26,30 +26,62 @@ const videos = [
   }
 ];
 
-const videoPlayer = document.getElementById('videoPlayer');
-const playlist = document.getElementById('playlist');
-const gestureBadge = document.getElementById('gestureBadge');
-const pointer = document.getElementById('pointer');
-const cameraToggle = document.getElementById('cameraToggle');
-const handCanvas = document.getElementById('handCanvas');
-const handCtx = handCanvas.getContext('2d');
+const elements = {
+  stage: document.getElementById('playerStage'),
+  video: document.getElementById('videoPlayer'),
+  cameraVideo: document.getElementById('cameraVideo'),
+  handCanvas: document.getElementById('handCanvas'),
+  pointer: document.getElementById('pointer'),
+  gestureBadge: document.getElementById('gestureBadge'),
+  handStatus: document.getElementById('handStatus'),
+  cameraToggle: document.getElementById('cameraToggle'),
+  fullscreenBtn: document.getElementById('fullscreenBtn'),
+  playlist: document.getElementById('playlist'),
+  progressBar: document.getElementById('progressBar'),
+  currentTime: document.getElementById('currentTime'),
+  totalTime: document.getElementById('totalTime'),
+  volumeBar: document.getElementById('volumeBar')
+};
+
+const handCtx = elements.handCanvas.getContext('2d');
 
 let currentIndex = 0;
 let cameraActive = false;
-let isLoaded = false;
-let lastGestureAction = 0;
+let hands = null;
+let lastGestureAt = 0;
 let lastCenter = null;
-let lastFrameTime = 0;
+let pinchHeld = false;
+let rafLoopId = null;
+let cameraStream = null;
+
+function formatTime(seconds) {
+  if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60).toString().padStart(2, '0');
+  return `${mins}:${secs}`;
+}
 
 function setGestureText(label) {
-  gestureBadge.textContent = `Gesto: ${label}`;
+  elements.gestureBadge.textContent = `Gesto: ${label}`;
+}
+
+function setHandStatus(label) {
+  elements.handStatus.textContent = label;
+}
+
+function updatePlaylistState() {
+  [...elements.playlist.children].forEach((item, index) => {
+    item.classList.toggle('is-active', index === currentIndex);
+  });
 }
 
 function buildPlaylist() {
   videos.forEach((video, index) => {
     const button = document.createElement('button');
+    button.type = 'button';
     button.className = 'playlist-item';
     if (index === currentIndex) button.classList.add('is-active');
+
     button.innerHTML = `
       <img class="playlist-item-thumb" src="${video.thumb}" alt="${video.title}" />
       <span class="playlist-item-copy">
@@ -57,70 +89,78 @@ function buildPlaylist() {
         <span class="playlist-item-meta">${index + 1}/5</span>
       </span>
     `;
-    button.addEventListener('click', () => loadVideo(index));
-    playlist.appendChild(button);
-  });
-}
 
-function updatePlaylistState() {
-  [...playlist.children].forEach((item, index) => {
-    item.classList.toggle('is-active', index === currentIndex);
+    button.addEventListener('click', () => {
+      loadVideo(index);
+      setGestureText('lista activada');
+    });
+
+    elements.playlist.appendChild(button);
   });
 }
 
 function loadVideo(index) {
   currentIndex = index;
-  videoPlayer.src = videos[index].url;
-  videoPlayer.load();
+  elements.video.src = videos[index].url;
+  elements.video.load();
   updatePlaylistState();
-  setGestureText('video cargado');
 }
 
 function togglePlayback() {
-  if (videoPlayer.paused) {
-    videoPlayer.play();
-    setGestureText('reproducir');
+  if (elements.video.paused) {
+    elements.video.play().catch(() => {});
+    setGestureText('reproduciendo');
   } else {
-    videoPlayer.pause();
-    setGestureText('pausar');
+    elements.video.pause();
+    setGestureText('pausado');
   }
 }
 
 function nextVideo() {
   const nextIndex = (currentIndex + 1) % videos.length;
   loadVideo(nextIndex);
-  setTimeout(() => videoPlayer.play(), 100);
+  elements.video.play().catch(() => {});
 }
 
 function prevVideo() {
   const prevIndex = (currentIndex - 1 + videos.length) % videos.length;
   loadVideo(prevIndex);
-  setTimeout(() => videoPlayer.play(), 100);
-}
-
-function setVolume(delta) {
-  const nextVolume = Math.min(1, Math.max(0, videoPlayer.volume + delta));
-  videoPlayer.volume = nextVolume;
-  setGestureText(`volumen ${nextVolume.toFixed(2)}`);
+  elements.video.play().catch(() => {});
 }
 
 function seekVideo(offset) {
-  const nextTime = Math.min(videoPlayer.duration || 0, Math.max(0, videoPlayer.currentTime + offset));
-  videoPlayer.currentTime = nextTime;
-  setGestureText(`salto ${offset > 0 ? '+' : ''}${offset}s`);
+  const nextTime = Math.min(
+    elements.video.duration || 0,
+    Math.max(0, elements.video.currentTime + offset)
+  );
+  elements.video.currentTime = nextTime;
 }
 
-function simulateClickAtPointer(x, y) {
-  const target = document.elementFromPoint(x, y);
-  if (!target) return;
+function setVolume(value) {
+  const clamped = Math.min(1, Math.max(0, value));
+  elements.video.volume = clamped;
+  elements.volumeBar.value = String(clamped);
+  setGestureText(`volumen ${clamped.toFixed(2)}`);
+}
 
+function updateTimeline() {
+  const duration = elements.video.duration || 0;
+  const current = elements.video.currentTime || 0;
+  const percent = duration ? (current / duration) * 100 : 0;
+
+  elements.progressBar.value = String(percent);
+  elements.currentTime.textContent = formatTime(current);
+  elements.totalTime.textContent = formatTime(duration);
+}
+
+function simulatePointerClick(x, y) {
+  const target = document.elementFromPoint(x, y) || elements.stage;
   const mouseMove = new MouseEvent('mousemove', {
     bubbles: true,
     clientX: x,
     clientY: y,
     buttons: 0
   });
-
   const mouseDown = new MouseEvent('mousedown', {
     bubbles: true,
     clientX: x,
@@ -128,7 +168,6 @@ function simulateClickAtPointer(x, y) {
     button: 0,
     buttons: 1
   });
-
   const mouseUp = new MouseEvent('mouseup', {
     bubbles: true,
     clientX: x,
@@ -136,7 +175,6 @@ function simulateClickAtPointer(x, y) {
     button: 0,
     buttons: 0
   });
-
   const click = new MouseEvent('click', {
     bubbles: true,
     clientX: x,
@@ -152,136 +190,101 @@ function simulateClickAtPointer(x, y) {
   setGestureText('clic simulado');
 }
 
-function fullscreenToggle() {
-  if (!document.fullscreenElement) {
-    document.documentElement.requestFullscreen?.();
-  } else {
-    document.exitFullscreen?.();
-  }
-}
+function triggerGesture(type) {
+  const now = performance.now();
+  if (now - lastGestureAt < 700) return;
+  lastGestureAt = now;
 
-function attachControls() {
-  document.querySelectorAll('[data-action]').forEach((button) => {
-    const action = button.getAttribute('data-action');
-    button.addEventListener('click', () => {
-      if (action === 'playPause') togglePlayback();
-      if (action === 'next') nextVideo();
-      if (action === 'prev') prevVideo();
-      if (action === 'fullscreen') fullscreenToggle();
-    });
-  });
-
-  cameraToggle.addEventListener('click', () => {
-    if (cameraActive) {
-      stopCamera();
-    } else {
-      startCamera();
+  switch (type) {
+    case 'palm':
+      setGestureText('palma abierta');
+      togglePlayback();
+      break;
+    case 'fist':
+      setGestureText('puño');
+      nextVideo();
+      break;
+    case 'vSign':
+      setGestureText('señal V');
+      prevVideo();
+      break;
+    case 'swipeRight':
+      setGestureText('deslizar derecha');
+      seekVideo(-10);
+      break;
+    case 'swipeLeft':
+      setGestureText('deslizar izquierda');
+      seekVideo(10);
+      break;
+    case 'handUp':
+      setGestureText('mano arriba');
+      setVolume(elements.video.volume + 0.08);
+      break;
+    case 'handDown':
+      setGestureText('mano abajo');
+      setVolume(elements.video.volume - 0.08);
+      break;
+    case 'pinch': {
+      setGestureText('pinza');
+      const x = Number(elements.pointer.style.left.replace('px', '')) || 0;
+      const y = Number(elements.pointer.style.top.replace('px', '')) || 0;
+      const rect = elements.stage.getBoundingClientRect();
+      simulatePointerClick(rect.left + x, rect.top + y);
+      break;
     }
-  });
-}
-
-function startCamera() {
-  const constraints = {
-    video: {
-      facingMode: 'user',
-      width: { ideal: 1280 },
-      height: { ideal: 720 }
-    },
-    audio: false
-  };
-
-  navigator.mediaDevices.getUserMedia(constraints)
-    .then((stream) => {
-      const camera = new Camera(document.createElement('video'), {
-        onFrame: async () => {
-          if (isLoaded && hands) {
-            await hands.send({ image: camera.video });
-          }
-        },
-        width: 640,
-        height: 480
-      });
-
-      window.__gestureCamera = camera;
-      camera.video.srcObject = stream;
-      camera.video.muted = true;
-      camera.video.play();
-      cameraActive = true;
-      cameraToggle.textContent = 'Detener cámara';
-      setGestureText('cámara activa');
-      setupHands();
-    })
-    .catch((error) => {
-      console.error('No se pudo acceder a la cámara:', error);
-      setGestureText('permiso de cámara requerido');
-    });
-}
-
-function stopCamera() {
-  if (window.__gestureCamera) {
-    const tracks = window.__gestureCamera.video.srcObject?.getTracks?.() || [];
-    tracks.forEach((track) => track.stop());
-    window.__gestureCamera.video.srcObject = null;
+    case 'cursor':
+      setGestureText('cursor');
+      break;
+    default:
+      setGestureText(type);
   }
-  cameraActive = false;
-  cameraToggle.textContent = 'Activar cámara';
-  setGestureText('cámara detenida');
-  pointer.style.opacity = '0';
-  handCtx.clearRect(0, 0, handCanvas.width, handCanvas.height);
+}
+
+function averagePoint(points) {
+  const sum = points.reduce(
+    (acc, point) => ({ x: acc.x + point.x, y: acc.y + point.y }),
+    { x: 0, y: 0 }
+  );
+  return {
+    x: sum.x / points.length,
+    y: sum.y / points.length
+  };
+}
+
+function euclidean(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function isFingerExtended(landmarks, tipIndex, pipIndex) {
+  return landmarks[tipIndex].y < landmarks[pipIndex].y;
+}
+
+function countExtendedFingers(landmarks) {
+  const tips = [
+    { tip: 8, pip: 6 },
+    { tip: 12, pip: 10 },
+    { tip: 16, pip: 14 },
+    { tip: 20, pip: 18 }
+  ];
+
+  return tips.filter(({ tip, pip }) => isFingerExtended(landmarks, tip, pip)).length;
 }
 
 function setupCanvas() {
-  const parentBox = videoPlayer.parentElement.getBoundingClientRect();
-  handCanvas.width = parentBox.width * window.devicePixelRatio;
-  handCanvas.height = parentBox.height * window.devicePixelRatio;
-  handCtx.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
+  const rect = elements.stage.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  elements.handCanvas.width = rect.width * dpr;
+  elements.handCanvas.height = rect.height * dpr;
+  handCtx.setTransform(1, 0, 0, 1, 0, 0);
+  handCtx.scale(dpr, dpr);
 }
 
-window.addEventListener('resize', setupCanvas);
-
-let hands;
-
-function setupHands() {
-  const options = {
-    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-  };
-
-  hands = new Hands(options);
-  hands.setOptions({
-    maxNumHands: 1,
-    modelComplexity: 1,
-    minDetectionConfidence: 0.7,
-    minTrackingConfidence: 0.6
-  });
-
-  hands.onResults(onHandResults);
-  isLoaded = true;
-}
-
-function onHandResults(results) {
-  const width = handCanvas.width / window.devicePixelRatio;
-  const height = handCanvas.height / window.devicePixelRatio;
-
+function drawHand(landmarks, width, height) {
   handCtx.clearRect(0, 0, width, height);
 
-  if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-    const landmarks = results.multiHandLandmarks[0];
-    drawHand(landmarks);
-    processGesture(landmarks, width, height);
-  } else {
-    pointer.style.opacity = '0';
-    setGestureText('sin mano');
-  }
-}
-
-function drawHand(landmarks) {
-  handCtx.clearRect(0, 0, handCanvas.width, handCanvas.height);
-  const width = handCanvas.width / window.devicePixelRatio;
-  const height = handCanvas.height / window.devicePixelRatio;
-
-  handCtx.fillStyle = 'rgba(56, 189, 248, 0.14)';
   handCtx.strokeStyle = '#38bdf8';
-  handCtx.lineWidth = 3;
+  handCtx.fillStyle = '#e2f3ff';
+  handCtx.lineWidth = 2.5;
   handCtx.lineJoin = 'round';
   handCtx.lineCap = 'round';
 
@@ -301,6 +304,7 @@ function drawHand(landmarks) {
     const startY = from.y * height;
     const endX = to.x * width;
     const endY = to.y * height;
+
     handCtx.beginPath();
     handCtx.moveTo(startX, startY);
     handCtx.lineTo(endX, endY);
@@ -311,60 +315,32 @@ function drawHand(landmarks) {
     const x = landmark.x * width;
     const y = landmark.y * height;
     handCtx.beginPath();
-    handCtx.arc(x, y, 4, 0, Math.PI * 2);
-    handCtx.fillStyle = '#f8fafc';
+    handCtx.arc(x, y, 3.8, 0, Math.PI * 2);
     handCtx.fill();
   });
-}
-
-function euclidean(a, b) {
-  return Math.hypot(a.x - b.x, a.y - b.y);
-}
-
-function isFingerExtended(landmarks, tipIndex, pipIndex) {
-  return landmarks[tipIndex].y < landmarks[pipIndex].y;
-}
-
-function countExtendedFingers(landmarks) {
-  let count = 0;
-  if (isFingerExtended(landmarks, 8, 6)) count += 1;
-  if (isFingerExtended(landmarks, 12, 10)) count += 1;
-  if (isFingerExtended(landmarks, 16, 14)) count += 1;
-  if (isFingerExtended(landmarks, 20, 18)) count += 1;
-  return count;
-}
-
-function averagePoint(points) {
-  const sum = points.reduce((acc, point) => ({ x: acc.x + point.x, y: acc.y + point.y }), { x: 0, y: 0 });
-  return {
-    x: sum.x / points.length,
-    y: sum.y / points.length
-  };
 }
 
 function processGesture(landmarks, width, height) {
   const indexTip = landmarks[8];
   const thumbTip = landmarks[4];
-  const middleTip = landmarks[12];
-  const wrist = landmarks[0];
   const center = averagePoint([landmarks[0], landmarks[5], landmarks[9], landmarks[13], landmarks[17]]);
-
-  const indexX = indexTip.x * width;
-  const indexY = indexTip.y * height;
-  pointer.style.left = `${indexX}px`;
-  pointer.style.top = `${indexY}px`;
-  pointer.style.opacity = '1';
-
   const pinchDistance = euclidean(thumbTip, indexTip);
-  const middleExtended = isFingerExtended(landmarks, 12, 10);
-  const indexExtended = isFingerExtended(landmarks, 8, 6);
-  const ringExtended = isFingerExtended(landmarks, 16, 14);
-  const pinkyExtended = isFingerExtended(landmarks, 20, 18);
-  const totalExtended = countExtendedFingers(landmarks);
-  const handOpen = totalExtended >= 3;
-  const fist = totalExtended === 0 && pinchDistance < 0.08;
-  const vSign = indexExtended && middleExtended && !ringExtended && !pinkyExtended;
-  const pinch = pinchDistance < 0.06;
+
+  const pointerX = indexTip.x * width;
+  const pointerY = indexTip.y * height;
+
+  elements.pointer.style.left = `${pointerX}px`;
+  elements.pointer.style.top = `${pointerY}px`;
+  elements.pointer.style.opacity = '1';
+
+  const extendedFingers = countExtendedFingers(landmarks);
+  const isOpenPalm = extendedFingers >= 3;
+  const isFist = extendedFingers === 0;
+  const isVSign = isFingerExtended(landmarks, 8, 6)
+    && isFingerExtended(landmarks, 12, 10)
+    && !isFingerExtended(landmarks, 16, 14)
+    && !isFingerExtended(landmarks, 20, 18);
+  const isPinch = pinchDistance < 0.07;
 
   if (lastCenter) {
     const dx = center.x - lastCenter.x;
@@ -372,108 +348,234 @@ function processGesture(landmarks, width, height) {
     const absX = Math.abs(dx);
     const absY = Math.abs(dy);
 
-    if (absX > 0.12 && absX > absY * 1.3) {
-      const actionName = dx > 0 ? 'swipeDerecha' : 'swipeIzquierda';
-      triggerGesture(actionName, Date.now());
+    if (absX > 0.12 && absX > absY * 1.2) {
+      triggerGesture(dx > 0 ? 'swipeRight' : 'swipeLeft');
       lastCenter = center;
       return;
     }
 
-    if (absY > 0.12 && absY > absX * 1.3) {
-      const actionName = dy < 0 ? 'manoArriba' : 'manoAbajo';
-      triggerGesture(actionName, Date.now());
+    if (absY > 0.12 && absY > absX * 1.2) {
+      triggerGesture(dy < 0 ? 'handUp' : 'handDown');
       lastCenter = center;
       return;
     }
   }
 
-  if (pinch) {
-    triggerGesture('pinza', Date.now());
+  if (isPinch && !pinchHeld) {
+    pinchHeld = true;
+    triggerGesture('pinch');
     lastCenter = center;
     return;
   }
 
-  if (fist) {
-    triggerGesture('puño', Date.now());
+  if (!isPinch) {
+    pinchHeld = false;
+  }
+
+  if (isFist) {
+    triggerGesture('fist');
     lastCenter = center;
     return;
   }
 
-  if (vSign) {
-    triggerGesture('vSign', Date.now());
+  if (isVSign) {
+    triggerGesture('vSign');
     lastCenter = center;
     return;
   }
 
-  if (handOpen) {
-    triggerGesture('palma', Date.now());
+  if (isOpenPalm) {
+    triggerGesture('palm');
     lastCenter = center;
     return;
   }
 
-  if (indexExtended) {
-    setGestureText('cursor');
-    pointer.style.opacity = '1';
-  }
-
+  setGestureText('cursor');
+  setHandStatus('Cursor activo');
   lastCenter = center;
 }
 
-function triggerGesture(type, now) {
-  const coolDown = 700;
-  if (now - lastGestureAction < coolDown) return;
+function onHandResults(results) {
+  const rect = elements.stage.getBoundingClientRect();
+  const width = rect.width;
+  const height = rect.height;
 
-  lastGestureAction = now;
+  handCtx.clearRect(0, 0, width, height);
 
-  switch (type) {
-    case 'palma':
-      setGestureText('palma abierta');
-      togglePlayback();
-      break;
-    case 'puño':
-      setGestureText('puño');
-      nextVideo();
-      break;
-    case 'vSign':
-      setGestureText('señal V');
-      prevVideo();
-      break;
-    case 'swipeDerecha':
-      setGestureText('deslizar derecha');
-      seekVideo(-10);
-      break;
-    case 'swipeIzquierda':
-      setGestureText('deslizar izquierda');
-      seekVideo(10);
-      break;
-    case 'manoArriba':
-      setGestureText('mano arriba');
-      setVolume(0.1);
-      break;
-    case 'manoAbajo':
-      setGestureText('mano abajo');
-      setVolume(-0.1);
-      break;
-    case 'pinza':
-      setGestureText('pinza');
-      const x = Number(pointer.style.left.replace('px', '')) || 0;
-      const y = Number(pointer.style.top.replace('px', '')) || 0;
-      simulateClickAtPointer(x, y);
-      break;
-    case 'cursor':
-      setGestureText('cursor');
-      break;
-    default:
-      setGestureText(type);
+  if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
+    elements.pointer.style.opacity = '0';
+    setGestureText('esperando');
+    setHandStatus(cameraActive ? 'Sin mano detectada' : 'Cámara desactivada');
+    return;
+  }
+
+  const landmarks = results.multiHandLandmarks[0];
+  drawHand(landmarks, width, height);
+  processGesture(landmarks, width, height);
+}
+
+function setupHands() {
+  if (hands) return;
+
+  const HandsCtor = window.Hands || window.MediapipeHands;
+  if (!HandsCtor) {
+    setTimeout(() => setupHands(), 250);
+    return;
+  }
+
+  hands = new HandsCtor({
+    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+  });
+
+  hands.setOptions({
+    maxNumHands: 1,
+    modelComplexity: 1,
+    minDetectionConfidence: 0.7,
+    minTrackingConfidence: 0.6
+  });
+
+  hands.onResults(onHandResults);
+}
+
+async function cameraLoop() {
+  if (!cameraActive || !hands || !elements.cameraVideo) return;
+
+  if (elements.cameraVideo.readyState >= 2) {
+    try {
+      await hands.send({ image: elements.cameraVideo });
+    } catch (error) {
+      console.warn('Error processing webcam frame:', error);
+    }
+  }
+
+  rafLoopId = requestAnimationFrame(cameraLoop);
+}
+
+function startCamera() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    setGestureText('sin soporte');
+    setHandStatus('La cámara no está disponible');
+    return;
+  }
+
+  navigator.mediaDevices
+    .getUserMedia({
+      video: {
+        facingMode: 'user',
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      },
+      audio: false
+    })
+    .then((stream) => {
+      cameraStream = stream;
+      elements.cameraVideo.srcObject = stream;
+      elements.cameraVideo.style.display = 'block';
+      elements.cameraVideo.muted = true;
+      return elements.cameraVideo.play();
+    })
+    .then(() => {
+      cameraActive = true;
+      elements.cameraToggle.textContent = 'Detener cámara';
+      setHandStatus('Cámara activa');
+      setGestureText('cámara lista');
+      setupHands();
+      cameraLoop();
+    })
+    .catch((error) => {
+      console.error('No se pudo acceder a la cámara:', error);
+      cameraActive = false;
+      setGestureText('permiso requerido');
+      setHandStatus('No se pudo acceder a la cámara');
+    });
+}
+
+function stopCamera() {
+  cameraActive = false;
+  elements.cameraToggle.textContent = 'Activar cámara';
+  setHandStatus('Cámara desactivada');
+
+  if (rafLoopId) {
+    cancelAnimationFrame(rafLoopId);
+    rafLoopId = null;
+  }
+
+  if (cameraStream) {
+    cameraStream.getTracks().forEach((track) => track.stop());
+    cameraStream = null;
+  }
+
+  if (elements.cameraVideo) {
+    elements.cameraVideo.srcObject = null;
+    elements.cameraVideo.style.display = 'none';
+  }
+
+  elements.pointer.style.opacity = '0';
+  handCtx.clearRect(0, 0, elements.handCanvas.width, elements.handCanvas.height);
+}
+
+function toggleCamera() {
+  if (cameraActive) {
+    stopCamera();
+  } else {
+    startCamera();
   }
 }
 
+function toggleMute() {
+  elements.video.muted = !elements.video.muted;
+  setGestureText(elements.video.muted ? 'silenciado' : 'audio activado');
+}
+
+function bindControls() {
+  document.querySelectorAll('[data-action]').forEach((button) => {
+    const action = button.getAttribute('data-action');
+    button.addEventListener('click', () => {
+      if (action === 'playPause') togglePlayback();
+      if (action === 'next') nextVideo();
+      if (action === 'prev') prevVideo();
+      if (action === 'mute') toggleMute();
+    });
+  });
+
+  elements.cameraToggle.addEventListener('click', toggleCamera);
+  elements.fullscreenBtn.addEventListener('click', () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.();
+    } else {
+      document.documentElement.requestFullscreen?.();
+    }
+  });
+
+  elements.volumeBar.addEventListener('input', (event) => {
+    const value = Number(event.target.value);
+    elements.video.volume = value;
+    setGestureText(`volumen ${value.toFixed(2)}`);
+  });
+
+  elements.progressBar.addEventListener('input', (event) => {
+    const percent = Number(event.target.value);
+    const duration = elements.video.duration || 0;
+    elements.video.currentTime = (percent / 100) * duration;
+    updateTimeline();
+  });
+
+  elements.video.addEventListener('timeupdate', updateTimeline);
+  elements.video.addEventListener('loadedmetadata', updateTimeline);
+  elements.video.addEventListener('play', () => setGestureText('reproduciendo'));
+  elements.video.addEventListener('pause', () => setGestureText('pausado'));
+}
+
 function initializeApp() {
-  attachControls();
+  bindControls();
   buildPlaylist();
   loadVideo(0);
   setupCanvas();
-  setGestureText('apunta con la mano');
+  updateTimeline();
+  setGestureText('esperando');
+  setHandStatus('Cámara desactivada');
+  elements.video.volume = 0.8;
 }
 
+window.addEventListener('resize', setupCanvas);
 window.addEventListener('DOMContentLoaded', initializeApp);

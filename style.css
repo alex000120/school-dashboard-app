@@ -154,6 +154,8 @@ h1 {
 
 #cameraVideo {
   display: none;
+  object-fit: cover;
+  z-index: 2;
 }
 
 #handCanvas {
