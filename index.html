@@ -11,66 +11,64 @@
   </head>
   <body>
     <div class="app-shell">
-      <main class="studio">
-        <section class="player-panel">
-          <div class="panel-topbar">
-            <div class="project-badge">Gesture Control</div>
-            <button id="cameraToggle" class="ghost-btn">Cámara</button>
+      <div class="screen-shell">
+        <header class="hud-bar">
+          <div class="hud-left">
+            <span id="fpsLabel" class="pill">FPS 5 • 119ms</span>
+            <span class="pill">Gesto •</span>
+            <span class="pill">Video 2/5</span>
           </div>
 
-          <div id="playerStage" class="player-stage">
-            <video id="videoPlayer" playsinline controls preload="metadata"></video>
-            <video id="cameraVideo" autoplay playsinline muted></video>
-            <canvas id="handCanvas"></canvas>
-            <div id="pointer" class="pointer-indicator" aria-hidden="true"></div>
+          <div class="hud-right">
+            <button id="cameraToggle" class="icon-btn">◉</button>
+            <button id="muteBtn" class="icon-btn">🔊</button>
+            <button id="helpBtn" class="icon-btn">?</button>
+          </div>
+        </header>
 
-            <div class="overlay-ui">
-              <div id="gestureBadge" class="gesture-badge">Gesto: esperando</div>
-              <div id="handStatus" class="status-pill">Cámara desactivada</div>
+        <main class="main-stage">
+          <section class="viewer-panel">
+            <div id="playerStage" class="player-stage">
+              <video id="videoPlayer" playsinline controls preload="metadata"></video>
+              <video id="cameraVideo" autoplay playsinline muted></video>
+              <canvas id="handCanvas"></canvas>
+              <div id="pointer" class="pointer-indicator" aria-hidden="true"></div>
+
+              <div id="gestureBadge" class="gesture-tip">Muestra ambas manos</div>
             </div>
-          </div>
+          </section>
 
-          <div class="bottom-strip">
-            <div class="camera-preview-box">
+          <aside class="side-panel">
+            <div class="mini-camera-card">
               <div class="mini-header">
-                <span>Mini cámara</span>
-                <span id="detectionState" class="detection-dot offline"></span>
+                <span>Camara</span>
+                <span id="detectionState" class="mini-dot offline"></span>
               </div>
               <video id="cameraPreview" autoplay playsinline muted></video>
-              <div id="gestureDetectionStatus" class="detection-status">Esperando cámara...</div>
+              <div id="gestureDetectionStatus" class="detection-status">Cámara apagada</div>
             </div>
 
-            <div class="controls-panel">
-              <div class="compact-actions">
-                <button class="action-btn" data-action="prev">Anterior</button>
-                <button class="action-btn" data-action="playPause">Play / Pausa</button>
-                <button class="action-btn" data-action="next">Siguiente</button>
-                <button class="action-btn" data-action="mute">Silenciar</button>
-              </div>
-
-              <div class="timeline-panel">
-                <div class="time-row">
-                  <span id="currentTime">0:00</span>
-                  <input id="progressBar" type="range" min="0" max="100" value="0" aria-label="Progreso del video" />
-                  <span id="totalTime">0:00</span>
-                </div>
-
-                <div class="volume-row">
-                  <label for="volumeBar">Volumen</label>
-                  <input id="volumeBar" type="range" min="0" max="1" step="0.01" value="0.8" aria-label="Control de volumen" />
-                </div>
-              </div>
+            <div class="side-buttons">
+              <button class="side-arrow up">◀</button>
+              <button class="side-arrow mid">◍</button>
+              <button class="side-arrow down">▶</button>
             </div>
-          </div>
-        </section>
+          </aside>
+        </main>
 
-        <aside class="library-panel">
-          <div class="panel-header-inline">
-            <h3>Biblioteca</h3>
+        <footer class="bottom-bar">
+          <div class="address-pill">
+            <span class="home-icon">⌂</span>
+            <span id="urlText">alex000120.github.io/inform-tica/index9.html</span>
           </div>
-          <div id="playlist" class="playlist"></div>
-        </aside>
-      </main>
+
+          <div class="bottom-tools">
+            <button class="add-btn">＋</button>
+            <button class="count-btn">11</button>
+            <button class="menu-btn">⋮</button>
+          </div>
+        </footer>
+      </div>
     </div>
   </body>
 </html>
