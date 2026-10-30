@@ -1,52 +1,52 @@
-# Gesture Video Player
+# Gesture Video Player Pro
 
-Una aplicación web escolar con:
+App web escolar con reproductor multimedia controlado por gestos usando cámara, cursor virtual y diseño responsivo.
 
-- Reproductor de video con 5 clips
-- Controles por gestos usando la cámara del dispositivo
-- Detección de manos con dibujo del esqueleto en pantalla
-- Cursor tipo mouse virtual con la punta del dedo índice
-- Simulación de clic con pinza
-- Adaptación responsive para escritorio, tablet y móvil
-- Funcionamiento sin backend, ideal para GitHub Pages
+## Características principales
 
-## Cómo usar
+- 5 videos en lista de reproducción
+- Pantalla adaptada para móvil, tablet y escritorio
+- Controles por gestos con detección de manos
+- Dibujo de la mano en la pantalla
+- Cursor tipo mouse con el dedo índice
+- Clic simulado con pinza
+- Control del video por palmada, puño, señal V, swipe y movimiento de mano
+- Ajuste de volumen y avance/retroceso con gestos
+- Compatible con GitHub Pages
 
-1. Abre la página en un navegador moderno.
-2. Permite el acceso a la cámara cuando el navegador lo pida.
-3. Mueve la mano frente a la cámara.
-4. Usa los gestos para controlar el video.
+## Gestos implementados
 
-## Gestos incluidos
+- Palma abierta -> reproducir / pausar
+- Puño -> siguiente video
+- Señal V -> video anterior
+- Deslizar a la derecha -> retroceder 10 segundos
+- Deslizar a la izquierda -> adelantar 10 segundos
+- Mano arriba -> subir volumen
+- Mano abajo -> bajar volumen
+- Pinza -> clic del cursor virtual
+- Dedo índice -> cursor del mouse
 
-- Palma abierta: reproducir o pausar
-- Puño: siguiente video
-- Señal V: anterior video
-- Deslizar a la izquierda: adelantar 10 segundos
-- Deslizar a la derecha: retroceder 10 segundos
-- Mano hacia arriba: subir volumen
-- Mano hacia abajo: bajar volumen
-- Pinza: simular clic sobre controles o elementos visibles
-- Dedo índice: cursor tipo mouse en pantalla
+## Requisitos
+
+- Navegador moderno con soporte para cámara
+- Permiso de acceso a la cámara y micrófono no requerido porque solo se usa video
+- HTTPS o GitHub Pages para acceso seguro a la cámara
 
 ## Despliegue en GitHub Pages
 
-1. Sube estos archivos a tu repositorio.
-2. En GitHub, ve a Settings > Pages.
-3. Selecciona la rama principal y la carpeta raíz `/`.
-4. Guarda y espera a que se publique.
+1. Sube todos los archivos a un repositorio público o privado.
+2. Ve a Settings > Pages.
+3. Selecciona la rama principal y la carpeta raíz.
+4. Guarda los cambios.
+5. La app quedará disponible en una URL de GitHub Pages.
 
-## Notas
-
-- La cámara requiere permisos del navegador y HTTPS; GitHub Pages usa HTTPS, por lo que funciona correctamente.
-- En algunos equipos, la precisión del gesto puede variar según la iluminación y la calidad de la cámara.
-- El contenido es responsivo y ajusta su diseño a distintos tamaños de pantalla.
-
-## Archivos principales
+## Archivos importantes
 
 - `index.html`
 - `style.css`
 - `app.js`
 
+## Nota
 
+La detección por gestos depende de la calidad de la cámara, la iluminación del entorno y el hardware del dispositivo. En la mayoría de equipos modernos funciona bien para un proyecto escolar.
 

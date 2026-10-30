@@ -3,37 +3,58 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Gesture Video Player</title>
+    <meta name="description" content="Reproductor de video controlado por gestos con cámara y cursor virtual." />
+    <title>Gesture Video Player Pro</title>
     <link rel="stylesheet" href="style.css" />
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" defer></script>
     <script src="app.js" defer></script>
   </head>
   <body>
     <div class="app-shell">
       <header class="topbar">
-        <div>
+        <div class="brand-stack">
           <p class="eyebrow">Proyecto escolar</p>
-          <h1>Gesture Video Player</h1>
+          <h1>Gesture Video Player Pro</h1>
         </div>
-        <button id="cameraToggle" class="secondary-btn">Activar cámara</button>
+
+        <div class="topbar-actions">
+          <button id="cameraToggle" class="secondary-btn">Activar cámara</button>
+          <button id="fullscreenBtn" class="secondary-btn">Pantalla completa</button>
+        </div>
       </header>
 
       <main class="layout">
         <section class="stage-panel">
-          <div class="player-stage">
+          <div id="playerStage" class="player-stage">
             <video id="videoPlayer" playsinline controls preload="metadata"></video>
+            <video id="cameraVideo" autoplay playsinline muted></video>
             <canvas id="handCanvas"></canvas>
             <div id="pointer" class="pointer-indicator" aria-hidden="true"></div>
-            <div id="gestureBadge" class="gesture-badge">Gesto: esperando</div>
+
+            <div class="overlay-ui">
+              <div id="gestureBadge" class="gesture-badge">Gesto: esperando</div>
+              <div id="handStatus" class="status-pill">Cámara desactivada</div>
+            </div>
           </div>
 
-          <div class="video-actions">
+          <div class="media-controls">
             <button class="action-btn" data-action="prev">Anterior</button>
-            <button class="action-btn" data-action="playPause">Play / Pause</button>
+            <button class="action-btn" data-action="playPause">Play / Pausa</button>
             <button class="action-btn" data-action="next">Siguiente</button>
-            <button class="action-btn" data-action="fullscreen">Pantalla completa</button>
+            <button class="action-btn" data-action="mute">Silenciar</button>
+          </div>
+
+          <div class="timeline-panel">
+            <div class="time-row">
+              <span id="currentTime">0:00</span>
+              <input id="progressBar" type="range" min="0" max="100" value="0" aria-label="Progreso del video" />
+              <span id="totalTime">0:00</span>
+            </div>
+
+            <div class="volume-row">
+              <label for="volumeBar">Volumen</label>
+              <input id="volumeBar" type="range" min="0" max="1" step="0.01" value="0.8" aria-label="Control de volumen" />
+            </div>
           </div>
         </section>
 
@@ -46,13 +67,24 @@
           <div class="legend-block">
             <h3>Controles por gestos</h3>
             <ul>
-              <li><span class="gesture-name">Palma abierta</span> <span>Reproducir / Pausar</span></li>
-              <li><span class="gesture-name">Puño</span> <span>Video siguiente</span></li>
-              <li><span class="gesture-name">Señal V</span> <span>Video anterior</span></li>
-              <li><span class="gesture-name">Deslizar izquierda / derecha</span> <span>Buscar ±10s</span></li>
-              <li><span class="gesture-name">Subir / bajar mano</span> <span>Volumen ±10%</span></li>
-              <li><span class="gesture-name">Pinza</span> <span>Simular clic / activar</span></li>
-              <li><span class="gesture-name">Dedo índice</span> <span>Cursor del mouse</span></li>
+              <li><span class="gesture-name">Palma abierta</span><span>Reproducir / pausar</span></li>
+              <li><span class="gesture-name">Puño</span><span>Video siguiente</span></li>
+              <li><span class="gesture-name">Señal V</span><span>Video anterior</span></li>
+              <li><span class="gesture-name">Deslizar izq / der</span><span>Buscar ±10s</span></li>
+              <li><span class="gesture-name">Mano arriba</span><span>Subir volumen</span></li>
+              <li><span class="gesture-name">Mano abajo</span><span>Bajar volumen</span></li>
+              <li><span class="gesture-name">Pinza</span><span>Clic del mouse</span></li>
+              <li><span class="gesture-name">Dedo índice</span><span>Cursor virtual</span></li>
+            </ul>
+          </div>
+
+          <div class="tips-block">
+            <h3>Recomendaciones</h3>
+            <ul>
+              <li>Usa buena iluminación.</li>
+              <li>Muestra la mano en frente de la cámara.</li>
+              <li>Activa la cámara desde el botón superior.</li>
+              <li>El cursor virtual funciona con el dedo índice.</li>
             </ul>
           </div>
         </aside>
