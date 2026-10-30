@@ -30,6 +30,7 @@ const elements = {
   stage: document.getElementById('playerStage'),
   video: document.getElementById('videoPlayer'),
   cameraVideo: document.getElementById('cameraVideo'),
+  cameraPreview: document.getElementById('cameraPreview'),
   handCanvas: document.getElementById('handCanvas'),
   pointer: document.getElementById('pointer'),
   gestureBadge: document.getElementById('gestureBadge'),
@@ -40,7 +41,9 @@ const elements = {
   progressBar: document.getElementById('progressBar'),
   currentTime: document.getElementById('currentTime'),
   totalTime: document.getElementById('totalTime'),
-  volumeBar: document.getElementById('volumeBar')
+  volumeBar: document.getElementById('volumeBar'),
+  detectionStatus: document.getElementById('gestureDetectionStatus'),
+  detectionDot: document.getElementById('detectionState')
 };
 
 const handCtx = elements.handCanvas.getContext('2d');
@@ -53,6 +56,11 @@ let lastCenter = null;
 let pinchHeld = false;
 let rafLoopId = null;
 let cameraStream = null;
+
+function setDetectionStatus(text, active) {
+  elements.detectionStatus.textContent = text;
+  elements.detectionDot.classList.toggle('active', !!active);
+}
 
 function formatTime(seconds) {
   if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
@@ -129,10 +137,7 @@ function prevVideo() {
 }
 
 function seekVideo(offset) {
-  const nextTime = Math.min(
-    elements.video.duration || 0,
-    Math.max(0, elements.video.currentTime + offset)
-  );
+  const nextTime = Math.min(elements.video.duration || 0, Math.max(0, elements.video.currentTime + offset));
   elements.video.currentTime = nextTime;
 }
 
@@ -392,6 +397,7 @@ function processGesture(landmarks, width, height) {
 
   setGestureText('cursor');
   setHandStatus('Cursor activo');
+  setDetectionStatus('Mano detectada: cursor activo', true);
   lastCenter = center;
 }
 
@@ -406,6 +412,7 @@ function onHandResults(results) {
     elements.pointer.style.opacity = '0';
     setGestureText('esperando');
     setHandStatus(cameraActive ? 'Sin mano detectada' : 'Cámara desactivada');
+    setDetectionStatus('Sin mano detectada', false);
     return;
   }
 
@@ -451,10 +458,19 @@ async function cameraLoop() {
   rafLoopId = requestAnimationFrame(cameraLoop);
 }
 
+function bindCameraStreams(stream) {
+  elements.cameraVideo.srcObject = stream;
+  elements.cameraPreview.srcObject = stream;
+  elements.cameraVideo.style.display = 'block';
+  elements.cameraVideo.muted = true;
+  elements.cameraPreview.muted = true;
+}
+
 function startCamera() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     setGestureText('sin soporte');
     setHandStatus('La cámara no está disponible');
+    setDetectionStatus('Navegador sin soporte', false);
     return;
   }
 
@@ -469,16 +485,18 @@ function startCamera() {
     })
     .then((stream) => {
       cameraStream = stream;
-      elements.cameraVideo.srcObject = stream;
-      elements.cameraVideo.style.display = 'block';
-      elements.cameraVideo.muted = true;
-      return elements.cameraVideo.play();
+      bindCameraStreams(stream);
+      return Promise.all([
+        elements.cameraVideo.play(),
+        elements.cameraPreview.play()
+      ]);
     })
     .then(() => {
       cameraActive = true;
       elements.cameraToggle.textContent = 'Detener cámara';
       setHandStatus('Cámara activa');
       setGestureText('cámara lista');
+      setDetectionStatus('Cámara activa, esperando mano...', false);
       setupHands();
       cameraLoop();
     })
@@ -487,6 +505,7 @@ function startCamera() {
       cameraActive = false;
       setGestureText('permiso requerido');
       setHandStatus('No se pudo acceder a la cámara');
+      setDetectionStatus('Permiso de cámara requerido', false);
     });
 }
 
@@ -494,6 +513,7 @@ function stopCamera() {
   cameraActive = false;
   elements.cameraToggle.textContent = 'Activar cámara';
   setHandStatus('Cámara desactivada');
+  setDetectionStatus('Cámara desactivada', false);
 
   if (rafLoopId) {
     cancelAnimationFrame(rafLoopId);
@@ -508,6 +528,10 @@ function stopCamera() {
   if (elements.cameraVideo) {
     elements.cameraVideo.srcObject = null;
     elements.cameraVideo.style.display = 'none';
+  }
+
+  if (elements.cameraPreview) {
+    elements.cameraPreview.srcObject = null;
   }
 
   elements.pointer.style.opacity = '0';
@@ -574,6 +598,7 @@ function initializeApp() {
   updateTimeline();
   setGestureText('esperando');
   setHandStatus('Cámara desactivada');
+  setDetectionStatus('Esperando cámara...', false);
   elements.video.volume = 0.8;
 }
 

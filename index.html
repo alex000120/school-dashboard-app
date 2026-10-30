@@ -7,8 +7,6 @@
     <title>Gesture Video Player Pro</title>
     <link rel="stylesheet" href="style.css" />
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" defer></script>
     <script src="app.js" defer></script>
   </head>
   <body>
@@ -61,6 +59,15 @@
         </section>
 
         <aside class="sidebar">
+          <div class="camera-preview-panel">
+            <div class="mini-panel-header">
+              <h3>Mini cámara</h3>
+              <span id="detectionState" class="detection-dot offline"></span>
+            </div>
+            <video id="cameraPreview" autoplay playsinline muted></video>
+            <div id="gestureDetectionStatus" class="detection-status">Esperando cámara...</div>
+          </div>
+
           <div class="playlist-block">
             <h2>Lista de reproducción</h2>
             <div id="playlist" class="playlist"></div>
